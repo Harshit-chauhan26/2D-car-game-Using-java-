@@ -1,4 +1,5 @@
 import java.awt.Color;
+import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -18,10 +19,19 @@ public class AppPanel extends JPanel {
     Timer timer;
     int playerX = 200;
     int playerY = 350;
-
     int obstacleX = 200;
     int obstacleY = -150;
+
+    int score = 0;
+    int obstacleSpeed = 5;
+
+    int playerSpeed = 0; // Current speed of the player's car
+    final int MAX_SPEED = 20; // Maximum speed
+    final int ACCELERATION = 1; // Acceleration rate
+    final int DECELERATION = 1; // Deceleration rate
+
     boolean gameOver = false;
+    boolean accelerating = false; // Track if the player is accelerating
 
     AppPanel() {
         setSize(500, 500);
@@ -33,7 +43,6 @@ public class AppPanel extends JPanel {
         setFocusable(true);
     }
 
-    // background image
     static void showBgImage() {
         try {
             bgImage = ImageIO.read(AppPanel.class.getResource("road1.png"));
@@ -43,7 +52,6 @@ public class AppPanel extends JPanel {
         }
     }
 
-    // player car image
     static void showPlayerCarImage() {
         try {
             playerCarImage = ImageIO.read(AppPanel.class.getResource("car.png")); 
@@ -53,7 +61,6 @@ public class AppPanel extends JPanel {
         }
     }
 
-    // the obstacle car image
     static void showObstacleCarImage() {
         try {
             obstacleCarImage = ImageIO.read(AppPanel.class.getResource("car1.png")); 
@@ -67,26 +74,28 @@ public class AppPanel extends JPanel {
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
 
-        
         if (bgImage != null) {
             g.drawImage(bgImage, 0, 0, getWidth(), getHeight(), null);
         }
 
-        
         if (playerCarImage != null) {
             g.drawImage(playerCarImage, playerX, playerY, 90, 100, null);
         }
 
-        
         if (obstacleCarImage != null) {
             g.drawImage(obstacleCarImage, obstacleX, obstacleY, 100, 105, null);
         }
 
-        
-        if (checkCollision()) {
-            gameOver = true;
+        g.setColor(Color.WHITE);
+        g.setFont(new Font("Arial", Font.BOLD, 16));
+        g.drawString("Score: " + score, 10, 20);
+        g.drawString("Obstacle Speed: " + obstacleSpeed, 10, 40);
+        g.drawString("Player Speed: " + playerSpeed, 10, 60); // Display player speed
+
+        if (gameOver) {
             g.setColor(Color.RED);
-            g.drawString("Game Over! Press SPACEBAR to Restart", 150, 250);
+            g.setFont(new Font("Arial", Font.BOLD, 20));
+            g.drawString("Game Over! Press SPACEBAR to Restart", 100, 250);
         }
     }
 
@@ -95,12 +104,30 @@ public class AppPanel extends JPanel {
             @Override
             public void actionPerformed(ActionEvent e) {
                 if (!gameOver) {
-                    obstacleY += 5; 
+                    obstacleY += obstacleSpeed;
 
-                    
                     if (obstacleY > getHeight()) {
                         obstacleY = -100;
                         obstacleX = (int) (Math.random() * (getWidth() - 100));
+                        score++;
+
+                        if (score % 5 == 0) {
+                            obstacleSpeed++;
+                        }
+                    }
+
+                    // Adjust player speed for acceleration or deceleration
+                    if (accelerating) {
+                        playerSpeed = Math.min(playerSpeed + ACCELERATION, MAX_SPEED);
+                    } else if (playerSpeed > 0) {
+                        playerSpeed = Math.max(playerSpeed - DECELERATION, 0);
+                    }
+
+                    playerY -= playerSpeed; // Move player upwards based on speed
+
+                    if (checkCollision()) {
+                        gameOver = true;
+                        timer.stop();
                     }
 
                     repaint();
@@ -110,14 +137,10 @@ public class AppPanel extends JPanel {
         timer.start();
     }
 
-    
     void setupKeyboardControls() {
         addKeyListener(new KeyListener() {
-
             @Override
-            public void keyTyped(KeyEvent e) {
-            
-            }
+            public void keyTyped(KeyEvent e) {}
 
             @Override
             public void keyPressed(KeyEvent e) {
@@ -130,7 +153,7 @@ public class AppPanel extends JPanel {
                             playerX -= 10;
                             break;
                         case KeyEvent.VK_UP:
-                            playerY -= 10;
+                            accelerating = true; // Start accelerating when UP key is pressed
                             break;
                         case KeyEvent.VK_DOWN:
                             playerY += 10;
@@ -145,16 +168,18 @@ public class AppPanel extends JPanel {
 
             @Override
             public void keyReleased(KeyEvent e) {
-        
+                if (e.getKeyCode() == KeyEvent.VK_UP) {
+                    accelerating = false; // Stop accelerating when UP key is released
+                }
             }
         });
     }
 
     boolean checkCollision() {
-        int playerWidth = 100;
+        int playerWidth = 90;
         int playerHeight = 100;
         int obstacleWidth = 100;
-        int obstacleHeight = 100;
+        int obstacleHeight = 105;
 
         return playerX < obstacleX + obstacleWidth &&
                playerX + playerWidth > obstacleX &&
@@ -162,13 +187,17 @@ public class AppPanel extends JPanel {
                playerY + playerHeight > obstacleY;
     }
 
-    // Restart the game
     void restartGame() {
         gameOver = false;
         playerX = 200;
         playerY = 350;
         obstacleX = 200;
         obstacleY = -150;
+        score = 0;
+        obstacleSpeed = 5;
+        playerSpeed = 0;
+        accelerating = false;
+        timer.start();
         repaint();
     }
 }
